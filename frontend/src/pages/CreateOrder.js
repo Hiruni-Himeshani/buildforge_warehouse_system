@@ -2,7 +2,16 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { FaClipboardList, FaArrowLeft, FaPlus, FaTrash } from "react-icons/fa";
+import {
+  FaClipboardList,
+  FaArrowLeft,
+  FaPlus,
+  FaTrash,
+  FaExclamationTriangle,
+  FaCheckCircle,
+  FaSpinner,
+  FaTimesCircle,
+} from "react-icons/fa";
 import FormField from "../components/FormField";
 import Button from "../components/Button";
 import Card from "../components/Card";
@@ -42,7 +51,7 @@ function CreateOrder() {
 
         if (!invRes.data || invRes.data.length === 0) {
           setLoadError("No equipment available. Please add equipment first.");
-          toast.warn("⚠️ No equipment available in inventory");
+          toast.warn("No equipment available in inventory");
         } else {
           setInventory(invRes.data);
         }
@@ -50,7 +59,7 @@ function CreateOrder() {
         if (!customerRes.data || customerRes.data.length === 0) {
           setLoadError("No customers registered. Please add customers first.");
           toast.warn(
-            "⚠️ No customers available. Please register customers first.",
+            "No customers available. Please register customers first.",
           );
         } else {
           setCustomers(customerRes.data);
@@ -65,7 +74,7 @@ function CreateOrder() {
           error.response?.data?.error ||
           "Failed to load customers and equipment";
         setLoadError(errorMsg);
-        toast.error(`❌ ${errorMsg}`);
+        toast.error(`${errorMsg}`);
       } finally {
         setIsLoading(false);
       }
@@ -126,7 +135,7 @@ function CreateOrder() {
   const confirmRemoveItem = () => {
     if (deleteConfirm) {
       setOrderItems(orderItems.filter((item) => item.id !== deleteConfirm));
-      toast.info("🗑️ Equipment removed from order");
+      toast.info("Equipment removed from order");
       setDeleteConfirm(null);
     }
   };
@@ -144,13 +153,13 @@ function CreateOrder() {
   const validateOrder = () => {
     // Check customer selection
     if (!selectedCustomerId || !selectedCustomerId.trim()) {
-      toast.error("❌ Please select a customer before proceeding");
+      toast.error("Please select a customer before proceeding");
       return false;
     }
 
     // Check items exist
     if (orderItems.length === 0) {
-      toast.error("❌ Please add at least one equipment item to the order");
+      toast.error("Please add at least one equipment item to the order");
       return false;
     }
 
@@ -160,14 +169,14 @@ function CreateOrder() {
 
       // Check equipment selected
       if (!item.itemName || item.itemName.trim() === "") {
-        toast.error(`❌ Equipment #${i + 1}: Please select an equipment`);
+        toast.error(`Equipment #${i + 1}: Please select an equipment`);
         return false;
       }
 
       // Check quantity
       if (!item.qty || item.qty < 1 || isNaN(item.qty)) {
         toast.error(
-          `❌ Equipment #${i + 1} (${item.itemName}): Quantity must be at least 1`,
+          `Equipment #${i + 1} (${item.itemName}): Quantity must be at least 1`,
         );
         return false;
       }
@@ -178,7 +187,7 @@ function CreateOrder() {
       );
 
       if (!equipmentData) {
-        toast.error(`❌ Equipment "${item.itemName}" not found in inventory`);
+        toast.error(`Equipment "${item.itemName}" not found in inventory`);
         return false;
       }
 
@@ -187,7 +196,7 @@ function CreateOrder() {
 
       if (item.qty > available) {
         toast.error(
-          `❌ ${item.itemName}: You requested ${item.qty} units, but only ${available} are available`,
+          `${item.itemName}: You requested ${item.qty} units, but only ${available} are available`,
         );
         return false;
       }
@@ -198,7 +207,7 @@ function CreateOrder() {
     const uniqueEquipment = new Set(equipmentNames);
     if (equipmentNames.length !== uniqueEquipment.size) {
       toast.warn(
-        "⚠️ You have added the same equipment multiple times. Consider consolidating quantities.",
+        "You have added the same equipment multiple times. Consider consolidating quantities.",
       );
     }
 
@@ -223,13 +232,13 @@ function CreateOrder() {
     try {
       // Final validation before submission
       if (!selectedCustomerId) {
-        toast.error("❌ Customer is not selected");
+        toast.error("Customer is not selected");
         setIsSubmitting(false);
         return;
       }
 
       if (orderItems.length === 0) {
-        toast.error("❌ No items in order");
+        toast.error("No items in order");
         setIsSubmitting(false);
         return;
       }
@@ -251,7 +260,7 @@ function CreateOrder() {
 
       // Success notification
       toast.success(
-        "✅ Order successfully created! Confirmation email sent to customer.",
+        "Order successfully created! Confirmation email sent to customer.",
       );
 
       console.log("Order created:", response.data);
@@ -270,13 +279,13 @@ function CreateOrder() {
 
       // More detailed error messages
       if (error.response?.status === 400) {
-        toast.error(`⚠️ ${error.response.data.error}`);
+        toast.error(`${error.response.data.error}`);
       } else if (error.response?.status === 500) {
-        toast.error("❌ Server error. Please try again later.");
+        toast.error("Server error. Please try again later.");
       } else if (error.code === "ECONNABORTED") {
-        toast.error("❌ Request timeout. Please try again.");
+        toast.error("Request timeout. Please try again.");
       } else {
-        toast.error(error.response?.data?.error || "❌ Unable to create order");
+        toast.error(error.response?.data?.error || "Unable to create order");
       }
     } finally {
       setIsSubmitting(false);
@@ -311,6 +320,16 @@ function CreateOrder() {
         margin: "0 auto",
       }}
     >
+      <style>{`
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
       {/* Loading State */}
       {isLoading && (
         <div
@@ -322,8 +341,16 @@ function CreateOrder() {
             marginBottom: "20px",
           }}
         >
-          <p style={{ fontSize: "16px", color: "#666", margin: 0 }}>
-            ⏳ Loading customers and equipment...
+          <FaSpinner
+            style={{
+              fontSize: "28px",
+              marginBottom: "10px",
+              animation: "spin 1s linear infinite",
+              color: "#667eea",
+            }}
+          />
+          <p style={{ fontSize: "16px", color: "#666", margin: "10px 0 0 0" }}>
+            Loading customers and equipment...
           </p>
         </div>
       )}
@@ -340,7 +367,8 @@ function CreateOrder() {
             color: "#c62828",
           }}
         >
-          <strong>❌ Error:</strong> {loadError}
+          <FaTimesCircle style={{ marginRight: "8px", fontSize: "20px" }} />
+          <strong>Error:</strong> {loadError}
           <br />
           <small>
             Please contact your administrator or try refreshing the page.
@@ -416,9 +444,9 @@ function CreateOrder() {
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
                 options={[
-                  { value: "HIGH", label: "🔴 High Priority" },
-                  { value: "MEDIUM", label: "🟡 Medium Priority" },
-                  { value: "LOW", label: "🟢 Low Priority" },
+                  { value: "HIGH", label: "High Priority (3 days)" },
+                  { value: "MEDIUM", label: "Medium Priority (7 days)" },
+                  { value: "LOW", label: "Low Priority (7+ days)" },
                 ]}
               />
 
@@ -441,7 +469,7 @@ function CreateOrder() {
                   }}
                 >
                   <h3 style={{ margin: 0, color: "#2c3e50" }}>
-                    📦 Equipment Items
+                    Equipment Items
                   </h3>
                   <Button
                     type="button"
@@ -552,7 +580,7 @@ function CreateOrder() {
                                 {isOverbooked && (
                                   <span style={{ color: "#e53935" }}>
                                     {" "}
-                                    ❌ EXCEEDS STOCK!
+                                    EXCEEDS STOCK!
                                   </span>
                                 )}
                               </small>
@@ -650,7 +678,7 @@ function CreateOrder() {
             }}
           >
             <h2 style={{ color: "#e74c3c", marginTop: 0 }}>
-              ⚠️ Delete Equipment?
+              Delete Equipment?
             </h2>
             <p style={{ color: "#555", marginBottom: "20px" }}>
               Are you sure you want to remove this equipment from your order?
@@ -734,7 +762,7 @@ function CreateOrder() {
               padding: "30px",
             }}
           >
-            <h2 style={{ color: "#2196F3", marginTop: 0 }}>📋 Order Summary</h2>
+            <h2 style={{ color: "#2196F3", marginTop: 0 }}>Order Summary</h2>
 
             {/* Customer Info */}
             <div
@@ -751,10 +779,10 @@ function CreateOrder() {
               <p style={{ margin: "5px 0" }}>
                 <strong>Priority:</strong>{" "}
                 {priority === "HIGH"
-                  ? "🔴 High"
+                  ? "High (3 days)"
                   : priority === "MEDIUM"
-                    ? "� Medium"
-                    : "🟢 Low"}
+                    ? "Medium (7 days)"
+                    : "Low (7+ days)"}
               </p>
             </div>
 
@@ -820,7 +848,7 @@ function CreateOrder() {
               <p
                 style={{ margin: "5px 0", fontSize: "14px", color: "#27ae60" }}
               >
-                ✅ All items have sufficient stock
+                All items have sufficient stock
               </p>
             </div>
 
@@ -846,7 +874,7 @@ function CreateOrder() {
                 style={{ flex: 1 }}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "⏳ Submitting..." : "✓ Confirm & Submit"}
+                {isSubmitting ? "Submitting..." : "Confirm & Submit"}
               </Button>
             </div>
           </Card>
