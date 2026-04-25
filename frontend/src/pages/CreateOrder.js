@@ -14,7 +14,7 @@ function CreateOrder() {
     const [selectedCustomerId, setSelectedCustomerId] = useState('');
     const [newOrder, setNewOrder] = useState({
         customerName: '',
-        priority: 'Normal',
+        priority: 'MEDIUM',
         equipmentName: '', 
         qty: 1
     });
@@ -110,8 +110,9 @@ function CreateOrder() {
                         value={newOrder.priority}
                         onChange={(e) => setNewOrder({...newOrder, priority: e.target.value})}
                         options={[
-                            { value: 'Normal', label: 'Normal Priority' },
-                            { value: 'High', label: 'High Priority' }
+                            { value: 'HIGH', label: '🔴 High Priority' },
+                            { value: 'MEDIUM', label: '🟡 Medium Priority' },
+                            { value: 'LOW', label: '🟢 Low Priority' }
                         ]}
                     />
 

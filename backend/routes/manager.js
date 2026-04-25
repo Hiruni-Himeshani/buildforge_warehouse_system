@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const nodemailer = require('nodemailer'); 
 const twilio = require('twilio');
 
 // 🧠 Import your team's new MongoDB Models!
@@ -8,6 +7,9 @@ const Equipment = require('../models/equipment');
 const Order = require('../models/Order');
 const Customer = require('../models/Customer');
 const { assertFitsInAisle } = require('../utils/aisleCapacity');
+
+// 📧 Import Email Service
+const { sendCustomerRegistrationEmail, sendOrderConfirmationEmail } = require('../services/emailService');
 
 /** Legacy inventory JSON shape expected by older UIs (itemName, availableQty, reservedQty). */
 function toInventoryRow(doc) {
@@ -20,20 +22,23 @@ function toInventoryRow(doc) {
     };
 }
 
-// 📧 EMAIL SETUP
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: 'buildforge.operations@gmail.com',
-        pass: 'hhamtbwzfqspuonb'
-    }
-});
-
 // 📱 TWILIO SMS SETUP
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
-const twilioClient = new twilio(accountSid, authToken);
+
+// ✅ Only initialize Twilio if valid credentials are provided
+let twilioClient = null;
+if (accountSid && accountSid.startsWith('AC') && authToken) {
+    try {
+        twilioClient = new twilio(accountSid, authToken);
+        console.log('✅ Twilio SMS configured successfully');
+    } catch (err) {
+        console.warn('⚠️  Twilio initialization failed:', err.message);
+    }
+} else {
+    console.warn('⚠️  Twilio credentials not configured in .env (SMS features disabled)');
+}
 
 // We keep settings in memory for now so your emails/SMS still work perfectly!
 let systemSettings = {
@@ -91,10 +96,14 @@ router.get('/customers', async (req, res) => {
     }
 });
 
+/**
+ * POST /api/manager/customers
+ * Create new customer and send registration confirmation email
+ */
 router.post('/customers', async (req, res) => {
     try {
         console.log('[manager] POST /customers called with payload:', req.body);
-        const { fullName, shopName, contactNumber, address, status } = req.body;
+        const { fullName, shopName, contactNumber, address, email, status } = req.body;
         if (!fullName || !fullName.trim()) return res.status(400).json({ error: 'Full Name is required' });
         if (!shopName || !shopName.trim()) return res.status(400).json({ error: 'Shop Name is required' });
         if (!contactNumber || !contactNumber.trim()) return res.status(400).json({ error: 'Contact Number is required' });
@@ -104,12 +113,20 @@ router.post('/customers', async (req, res) => {
             fullName: fullName.trim(),
             shopName: shopName.trim(),
             contactNumber: contactNumber.trim(),
+            email: email ? email.trim() : undefined,
             address: address.trim(),
             status: status && ['Pending', 'Active', 'Inactive'].includes(status) ? status : 'Active'
         });
         await customer.save();
         console.log('[manager] POST /customers succeeded:', customer._id);
-        res.status(201).json({ message: 'Customer created', customer });
+
+        // 📧 Send customer registration confirmation email
+        if (email && email.trim()) {
+            sendCustomerRegistrationEmail(email.trim(), fullName.trim(), shopName.trim())
+                .catch(err => console.warn('⚠️ Customer registration email failed:', err.message));
+        }
+
+        res.status(201).json({ message: 'Customer created successfully!', customer });
     } catch (err) {
         console.error('[manager] POST /customers failed:', err.message);
         res.status(500).json({ error: err.message });
@@ -119,13 +136,14 @@ router.post('/customers', async (req, res) => {
 router.put('/customers/:id', async (req, res) => {
     try {
         console.log('[manager] PUT /customers/' + req.params.id + ' called with payload:', req.body);
-        const { fullName, shopName, contactNumber, address, status } = req.body;
+        const { fullName, shopName, contactNumber, address, email, status } = req.body;
         const customer = await Customer.findById(req.params.id);
         if (!customer) return res.status(404).json({ error: 'Customer not found' });
 
         customer.fullName = fullName ? fullName.trim() : customer.fullName;
         customer.shopName = shopName ? shopName.trim() : customer.shopName;
         customer.contactNumber = contactNumber ? contactNumber.trim() : customer.contactNumber;
+        customer.email = email ? email.trim() : customer.email;
         customer.address = address ? address.trim() : customer.address;
         if (status && ['Pending','Active','Inactive'].includes(status)) customer.status = status;
 
@@ -166,11 +184,25 @@ router.post('/orders', async (req, res) => {
         console.log('[manager] POST /orders called with payload:', req.body);
         const selectedCustomerName = req.body.customerName;
         const selectedCustomerId = req.body.customerId || null;
+        
+        // Normalize priority: accept various formats and convert to standard enum
+        let priority = req.body.priority || 'MEDIUM';
+        const priorityMap = {
+            'high': 'HIGH',
+            'HIGH': 'HIGH',
+            'medium': 'MEDIUM',
+            'MEDIUM': 'MEDIUM',
+            'normal': 'MEDIUM',
+            'NORMAL': 'MEDIUM',
+            'low': 'LOW',
+            'LOW': 'LOW'
+        };
+        priority = priorityMap[priority] || 'MEDIUM';
 
         const newOrder = new Order({
             customerId: selectedCustomerId,
             customerName: selectedCustomerName,
-            priority: req.body.priority || 'Normal',
+            priority: priority,
             status: 'Pending',
             itemsRequested: [{ 
                 itemName: req.body.equipmentName, 
@@ -180,6 +212,36 @@ router.post('/orders', async (req, res) => {
         });
         await newOrder.save();
         console.log('[manager] POST /orders succeeded:', newOrder._id);
+
+        // 📧 Send order confirmation email to customer
+        if (selectedCustomerId) {
+            try {
+                const customer = await Customer.findById(selectedCustomerId);
+                if (customer && customer.email) {
+                    // Send order confirmation to customer email
+                    sendOrderConfirmationEmail(
+                        customer.email,
+                        selectedCustomerName,
+                        newOrder._id.toString().slice(-6).toUpperCase(),
+                        priority,
+                        newOrder.itemsRequested
+                    ).catch(err => console.warn('⚠️ Order email notification failed:', err.message));
+                } else if (customer) {
+                    // Send to operations email if customer email not available
+                    console.log('⚠️ Customer email not available, notifying operations instead');
+                    sendOrderConfirmationEmail(
+                        process.env.EMAIL_USER,
+                        selectedCustomerName,
+                        newOrder._id.toString().slice(-6).toUpperCase(),
+                        priority,
+                        newOrder.itemsRequested
+                    ).catch(err => console.warn('⚠️ Order notification failed:', err.message));
+                }
+            } catch (emailErr) {
+                console.warn('⚠️ Could not send order confirmation email:', emailErr.message);
+            }
+        }
+
         res.json({ message: "Order created successfully!", order: newOrder });
     } catch (err) {
         console.error('[manager] POST /orders failed:', err.message);
@@ -445,7 +507,7 @@ router.put('/orders/:id/backorder', async (req, res) => {
             await transporter.sendMail(mailOptions);
             
             // Only try SMS if Twilio is actually set up in your .env
-            if (process.env.TWILIO_ACCOUNT_SID) {
+            if (twilioClient && process.env.TWILIO_ACCOUNT_SID) {
                 await twilioClient.messages.create({
                     body: `🏗️ BuildForge Alert: Urgent stock shortage for ${order.customerName}. Email sent.`,
                     from: twilioPhoneNumber,
