@@ -29,9 +29,8 @@ import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import DashboardLayout from '../components/layout/DashboardLayout'
 
-/**
- * Visual map of aisles: max vs used space, edit capacity, add/delete aisles.
- */
+//Visual map of aisles: max vs used space, edit capacity, add/delete aisles.
+
 export default function AisleMapPage() {
   const [aisles, setAisles] = useState([])
   const [loading, setLoading] = useState(true)
@@ -154,7 +153,7 @@ export default function AisleMapPage() {
 
   return (
     <DashboardLayout
-      title="Aisle map"
+      title="Aisle Map"
       
     >
       <Alert severity="info" icon={<InfoOutlinedIcon />} sx={{ mb: 2, borderRadius: 2 }}>

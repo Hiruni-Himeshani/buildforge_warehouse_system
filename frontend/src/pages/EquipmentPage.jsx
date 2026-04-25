@@ -44,7 +44,7 @@ export default function EquipmentPage() {
   }, [])
 
   return (
-    <DashboardLayout title="Manage stock">
+    <DashboardLayout title="Manage Stock">
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         spacing={1}
@@ -70,7 +70,7 @@ export default function EquipmentPage() {
           onClick={() => setAddOpen(true)}
           sx={{ borderRadius: 2 }}
         >
-          Add inventory
+          Add Equipment
         </Button>
       </Stack>
 

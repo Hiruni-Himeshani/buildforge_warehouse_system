@@ -15,6 +15,7 @@ async function enrichAisle(doc) {
   };
 }
 
+//list aisles(Get all): GET /api/aisles
 const listAisles = async (req, res) => {
   try {
     const aisles = await Aisle.find().sort({ sortOrder: 1, code: 1 });
@@ -26,6 +27,7 @@ const listAisles = async (req, res) => {
   }
 };
 
+//create Aisle: POST /api/aisles { code, label, maxSpace, sortOrder }
 const createAisle = async (req, res) => {
   try {
     const { code, label, maxSpace, sortOrder } = req.body;
@@ -58,6 +60,7 @@ const createAisle = async (req, res) => {
   }
 };
 
+//update Aisle: PUT /api/aisles/:id { label, maxSpace, sortOrder }
 const updateAisle = async (req, res) => {
   try {
     const { id } = req.params;
@@ -95,6 +98,7 @@ const updateAisle = async (req, res) => {
   }
 };
 
+//delete Aisle: DELETE /api/aisles/:id
 const deleteAisle = async (req, res) => {
   try {
     const { id } = req.params;

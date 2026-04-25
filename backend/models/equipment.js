@@ -3,14 +3,9 @@ const mongoose = require('mongoose');
 // Allowed values for equipment status (used in enum validation)
 const EQUIPMENT_STATUS = ['Available', 'Reserved', 'Damaged'];
 
-/** Reserved location label for damaged stock (single warehouse trash zone). */
+// Reserved location label for damaged stock (single warehouse trash zone).
 const TRASH_LOCATION = 'Trash';
 
-/**
- * Equipment schema — inventory per rack/aisle in one warehouse.
- * - location: aisle/rack code (e.g. A-12, R3-B2). Use TRASH_LOCATION for damaged quarantine rows.
- * - itemId: optional SKU / asset tag for lookup.
- */
 const equipmentSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -32,7 +27,7 @@ const equipmentSchema = new mongoose.Schema({
     required: true,
     min: 0,
   },
-  /** Units committed to approved orders (subset of quantity). */
+  // Units committed to approved orders (subset of quantity).
   reservedQty: {
     type: Number,
     default: 0,

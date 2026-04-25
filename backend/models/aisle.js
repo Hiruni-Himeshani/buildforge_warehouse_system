@@ -1,10 +1,8 @@
 const mongoose = require('mongoose');
 const { TRASH_LOCATION } = require('./equipment');
 
-/**
- * One row per physical aisle/rack zone. `code` must match Equipment.location exactly for capacity checks.
- * Simple REST: /api/aisles (see backend/routes/aisle.routes.js) — frontend calls use axios like StockMovementHistory.
- */
+//Simple REST: /api/aisles (see backend/routes/aisle.routes.js) — frontend calls use axios like StockMovementHistory.
+ 
 const aisleSchema = new mongoose.Schema({
   code: {
     type: String,
