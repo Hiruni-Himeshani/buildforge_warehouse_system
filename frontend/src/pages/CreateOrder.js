@@ -173,7 +173,7 @@ function CreateOrder() {
         return false;
       }
 
-      // Check quantity
+      // Check quantity is at least 1
       if (!item.qty || item.qty < 1 || isNaN(item.qty)) {
         toast.error(
           `Equipment #${i + 1} (${item.itemName}): Quantity must be at least 1`,
@@ -181,23 +181,13 @@ function CreateOrder() {
         return false;
       }
 
-      // Check against available inventory
+      // Verify equipment exists
       const equipmentData = inventory.find(
         (inv) => inv.itemName === item.itemName,
       );
 
       if (!equipmentData) {
         toast.error(`Equipment "${item.itemName}" not found in inventory`);
-        return false;
-      }
-
-      const available =
-        equipmentData.trueAvailableQty || equipmentData.availableQty || 0;
-
-      if (item.qty > available) {
-        toast.error(
-          `${item.itemName}: You requested ${item.qty} units, but only ${available} are available`,
-        );
         return false;
       }
     }
@@ -292,24 +282,7 @@ function CreateOrder() {
     }
   };
 
-  /**
-   * Get available quantity for a specific equipment
-   */
-  const getAvailableQty = (itemName) => {
-    const equipment = inventory.find((inv) => inv.itemName === itemName);
-    return equipment
-      ? equipment.trueAvailableQty || equipment.availableQty || 0
-      : 0;
-  };
 
-  /**
-   * Calculate total quantities per item for display
-   */
-  const getTotalQtyForItem = (itemName) => {
-    return orderItems
-      .filter((item) => item.itemName === itemName)
-      .reduce((sum, item) => sum + parseInt(item.qty || 0), 0);
-  };
 
   return (
     <div
@@ -513,10 +486,6 @@ function CreateOrder() {
                     }}
                   >
                     {orderItems.map((item, index) => {
-                      const availableQty = getAvailableQty(item.itemName);
-                      const totalQtyForItem = getTotalQtyForItem(item.itemName);
-                      const isOverbooked = totalQtyForItem > availableQty;
-
                       return (
                         <div
                           key={item.id}
@@ -524,12 +493,10 @@ function CreateOrder() {
                             display: "flex",
                             gap: "10px",
                             alignItems: "flex-end",
-                            backgroundColor: isOverbooked ? "#ffebee" : "white",
+                            backgroundColor: "white",
                             padding: "12px",
                             borderRadius: "4px",
-                            border: isOverbooked
-                              ? "2px solid #e53935"
-                              : "1px solid #ecf0f1",
+                            border: "1px solid #ecf0f1",
                           }}
                         >
                           <div style={{ flex: 1 }}>
@@ -559,11 +526,7 @@ function CreateOrder() {
                               <option value="">-- Select Equipment --</option>
                               {inventory.map((inv) => (
                                 <option key={inv.itemName} value={inv.itemName}>
-                                  {inv.itemName} (Avail:{" "}
-                                  {inv.trueAvailableQty ||
-                                    inv.availableQty ||
-                                    0}
-                                  )
+                                  {inv.itemName}
                                 </option>
                               ))}
                             </select>
@@ -575,14 +538,7 @@ function CreateOrder() {
                                   marginTop: "4px",
                                 }}
                               >
-                                Available: {availableQty} | Requesting in this
-                                order: {item.qty}
-                                {isOverbooked && (
-                                  <span style={{ color: "#e53935" }}>
-                                    {" "}
-                                    EXCEEDS STOCK!
-                                  </span>
-                                )}
+                                Requesting: {item.qty} units
                               </small>
                             )}
                           </div>
@@ -835,22 +791,7 @@ function CreateOrder() {
               </tbody>
             </table>
 
-            {/* Stock Validation */}
-            <div
-              style={{
-                backgroundColor: "#f0f9ff",
-                padding: "12px",
-                borderRadius: "4px",
-                marginBottom: "15px",
-                borderLeft: "4px solid #27ae60",
-              }}
-            >
-              <p
-                style={{ margin: "5px 0", fontSize: "14px", color: "#27ae60" }}
-              >
-                All items have sufficient stock
-              </p>
-            </div>
+
 
             {/* Action Buttons */}
             <div

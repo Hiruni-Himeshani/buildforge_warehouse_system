@@ -197,8 +197,11 @@ const templates = {
                 </table>
               </div>
               
-              <div class="sla-notice">
-                <strong>Service Level Agreement:</strong><br>
+              <div class="sla-notice">                <strong>Order Status: PENDING APPROVAL</strong><br>
+                Your order has been successfully submitted and is currently <strong>pending approval</strong> from our Sales Manager. We will review your requested quantities and proceed with the approval process. You will receive a confirmation email once your order is approved.
+              </div>
+              
+              <div class=\"sla-notice\" style=\"background: #f0f9ff; border-left-color: #2196F3;\">                <strong>Service Level Agreement:</strong><br>
                 ${slaText}
               </div>
               

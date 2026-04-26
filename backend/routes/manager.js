@@ -287,22 +287,13 @@ router.post("/orders", async (req, res) => {
         .json({ error: "At least one item is required in the order" });
     }
 
-    // Validate stock availability before creating order
+    // Verify all equipment exists in the system
     for (let item of itemsRequested) {
       const equipment = await Equipment.findOne({ name: item.itemName });
       if (!equipment) {
         return res
           .status(400)
           .json({ error: `Equipment "${item.itemName}" not found` });
-      }
-      const available =
-        equipment.quantity -
-        (equipment.reservedQty || 0) -
-        (equipment.damagedQuantity || 0);
-      if (item.qty > available) {
-        return res.status(400).json({
-          error: `Insufficient stock for "${item.itemName}": requested ${item.qty}, only ${available} available`,
-        });
       }
     }
 
