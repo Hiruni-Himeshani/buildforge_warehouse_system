@@ -23,7 +23,8 @@ export default function EquipmentPage() {
     setEditing(row)
     setEditOpen(true)
   }, [])
-
+  
+  // backend pdf api: GET /api/equipment/pdf-stock
   const handleDownloadStockPdf = useCallback(async () => {
     setPdfExporting(true)
     try {
