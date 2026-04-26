@@ -316,33 +316,7 @@ router.post("/orders", async (req, res) => {
     await newOrder.save();
     console.log("[manager] POST /orders succeeded:", newOrder._id);
 
-    // � RESERVE INVENTORY IMMEDIATELY when order is created (Pending state)
-    // This prevents double-booking when user creates multiple orders quickly
-    for (let requestedItem of itemsRequested) {
-      const inventoryItem = await Equipment.findOne({
-        name: requestedItem.itemName,
-      });
-
-      if (inventoryItem) {
-        inventoryItem.reservedQty = (inventoryItem.reservedQty || 0) + requestedItem.qty;
-        await inventoryItem.save();
-        console.log(
-          `[manager] Inventory Reserved: ${requestedItem.itemName} x${requestedItem.qty}, reservedQty now: ${inventoryItem.reservedQty}`
-        );
-      }
-
-      // Add stock movement record
-      newOrder.stockMovements.push({
-        action: "Reserved",
-        itemName: requestedItem.itemName,
-        qty: requestedItem.qty,
-        notes: "Order created and inventory reserved",
-      });
-    }
-
-    await newOrder.save(); // Save stock movements
-
-    // �📧 Send order confirmation email to customer
+    // 📧 Send order confirmation email to customer
     if (selectedCustomerId) {
       try {
         const customer = await Customer.findById(selectedCustomerId);
@@ -395,38 +369,13 @@ router.put("/orders/:id/cancel", async (req, res) => {
 
     if (!order) return res.status(404).json({ error: "Order not found" });
 
-    // RELEASE reserved inventory when order is cancelled
-    for (let requestedItem of order.itemsRequested) {
-      const inventoryItem = await Equipment.findOne({
-        name: requestedItem.itemName,
-      });
-
-      if (inventoryItem) {
-        inventoryItem.reservedQty = Math.max(
-          0,
-          inventoryItem.reservedQty - requestedItem.qty
-        );
-        await inventoryItem.save();
-        console.log(
-          `[manager] Inventory Released (Cancellation): ${requestedItem.itemName} x${requestedItem.qty}, reservedQty now: ${inventoryItem.reservedQty}`
-        );
-      }
-
-      order.stockMovements.push({
-        action: "Released",
-        itemName: requestedItem.itemName,
-        qty: requestedItem.qty,
-        notes: `Order cancelled - reservation released (${cancellationReason || 'No reason provided'})`,
-      });
-    }
-
     order.status = "Cancelled";
     order.cancellationCategory = cancellationCategory;
     order.cancellationReason = cancellationReason;
     order.cancelledAt = new Date();
 
     await order.save();
-    res.json({ message: "Order cancelled and inventory released!", order });
+    res.json({ message: "Order moved to Cancellation Audit Trail!", order });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -440,30 +389,28 @@ router.put("/orders/:id/approve", async (req, res) => {
 
     order.status = "Approved"; // Matches your exact Schema Enum!
 
-    // Loop through items to VERIFY inventory is still available (already reserved when order was created)
+    // Loop through items to update Inventory in the cloud
     for (let requestedItem of order.itemsRequested) {
       const inventoryItem = await Equipment.findOne({
         name: requestedItem.itemName,
       });
 
       if (inventoryItem) {
-        // Verify stock is still available (already reserved when order was Pending)
         const free = inventoryItem.quantity - inventoryItem.reservedQty;
         if (requestedItem.qty > free) {
           return res.status(400).json({
-            error: `Insufficient stock for "${requestedItem.itemName}": reserved ${requestedItem.qty}, but only ${free} available. Stock may have been allocated to other orders.`,
+            error: `Insufficient stock for "${requestedItem.itemName}": need ${requestedItem.qty}, ${free} available to reserve.`,
           });
         }
-        console.log(
-          `[manager] Order approval verified: ${requestedItem.itemName} still has sufficient reserved stock`
-        );
+        inventoryItem.reservedQty += requestedItem.qty;
+        await inventoryItem.save(); // Save the new reserved amount to the cloud
       }
 
       order.stockMovements.push({
-        action: "Approved",
+        action: "Reserved",
         itemName: requestedItem.itemName,
         qty: requestedItem.qty,
-        notes: "Order approved (inventory was reserved when order was created)",
+        notes: "Order approved and stock reserved",
       });
     }
 
