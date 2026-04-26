@@ -19,10 +19,10 @@ const seedDB = async () => {
         // 2. Create Test Users
         const hashedPassword = await bcrypt.hash('password', 10);
         await User.insertMany([
-            { username: 'manager', password: hashedPassword, role: 'SalesManager' },
-            { username: 'officer', password: hashedPassword, role: 'SalesOfficer' },
-            { username: 'warehouse', password: hashedPassword, role: 'WarehouseManager' },
-            { username: 'keeper', password: hashedPassword, role: 'StoreKeeper' }
+            { username: 'manager', email: 'manager@buildforge.com', password: hashedPassword, role: 'SalesManager' },
+            { username: 'officer', email: 'officer@buildforge.com', password: hashedPassword, role: 'SalesOfficer' },
+            { username: 'warehouse', email: 'warehouse@buildforge.com', password: hashedPassword, role: 'WarehouseManager' },
+            { username: 'keeper', email: 'keeper@buildforge.com', password: hashedPassword, role: 'StoreKeeper' }
         ]);
 
         // 3. Create Fake Equipment (schema: name, quantity, …)
@@ -33,16 +33,16 @@ const seedDB = async () => {
             { name: 'Jackhammer', quantity: 3, reservedQty: 0, category: 'Tools' },
         ]);
 
-        // 4. Create Fake Pending Orders
+        // 4. Create Fake Pending Orders with priority
         await Order.insertMany([
             {
                 customerName: "BuildIt Corp",
-                priority: "High",
+                priority: "HIGH",
                 itemsRequested: [{ equipmentId: tools[0]._id, itemName: tools[0].name, qty: 2 }]
             },
             {
                 customerName: "City Developments",
-                priority: "Normal",
+                priority: "MEDIUM",
                 // Notice this asks for 25 scaffolds, but we only have 20! You will have to reject this later.
                 itemsRequested: [{ equipmentId: tools[1]._id, itemName: tools[1].name, qty: 25 }] 
             }

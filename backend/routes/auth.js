@@ -7,20 +7,33 @@ const jwt = require('jsonwebtoken');
 // 🎯 This creates the /register path
 router.post('/register', async (req, res) => {
     try {
-        const { username, password, role } = req.body;
+        const { username, email, password, role } = req.body;
 
-        // 1. Check if user exists
+        // 1. Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!email || !emailRegex.test(email)) {
+            return res.status(400).json({ msg: "Please provide a valid email address" });
+        }
+
+        // 2. Check if user exists
         let user = await User.findOne({ username });
         if (user) {
             return res.status(400).json({ msg: "User already exists" });
         }
 
-        // 2. Encrypt the password
+        // 3. Check if email already exists
+        let emailExists = await User.findOne({ email });
+        if (emailExists) {
+            return res.status(400).json({ msg: "Email already registered" });
+        }
+
+        // 4. Encrypt the password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // 3. Save the new user
+        // 5. Save the new user
         user = new User({ 
             username, 
+            email,
             password: hashedPassword, 
             role 
         });

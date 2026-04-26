@@ -32,6 +32,29 @@ function OrderHistory() {
         }
     };
 
+    // 🎨 Priority badge styling
+    const getPriorityBadge = (priority) => {
+        let bgColor = '#eceff1';
+        let textColor = '#37474f';
+        let icon = '○';
+        
+        if (priority === 'HIGH') {
+            bgColor = '#ffcdd2';
+            textColor = '#c62828';
+            icon = '🔴';
+        } else if (priority === 'MEDIUM') {
+            bgColor = '#fff9c4';
+            textColor = '#f57f17';
+            icon = '🟡';
+        } else if (priority === 'LOW') {
+            bgColor = '#c8e6c9';
+            textColor = '#1b5e20';
+            icon = '🟢';
+        }
+        
+        return { bgColor, textColor, icon };
+    };
+
     // 🚦 Show the full order history with all order statuses
     const historyOrders = [...orders];
 
@@ -79,34 +102,50 @@ function OrderHistory() {
                                 </td>
                             </tr>
                         ) : (
-                            historyOrders.map((order) => (
-                                <tr key={order._id} style={{ backgroundColor: '#ffffff' }}>
-                                    <td style={{ padding: '12px', border: '1px solid #cfd8dc' }}>{order._id.slice(-6).toUpperCase()}</td>
-                                    <td style={{ padding: '12px', border: '1px solid #cfd8dc' }}>{order.customerName}</td>
-                                    <td style={{ padding: '12px', border: '1px solid #cfd8dc' }}>{order.priority}</td>
-                                    <td style={{ padding: '12px', border: '1px solid #cfd8dc' }}>
-                                        {order.itemsRequested.map((item, index) => (
-                                            <div key={index} style={{ marginBottom: '4px' }}>
-                                                • {item.itemName} x {item.qty}
-                                            </div>
-                                        ))}
-                                    </td>
-                                    <td style={{ padding: '12px', border: '1px solid #cfd8dc' }}>
-                                        <span style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            padding: '6px 10px',
-                                            borderRadius: '999px',
-                                            fontWeight: 'bold',
-                                            color: '#263238',
-                                            backgroundColor: order.status === 'Approved' ? '#dcedc8' : order.status === 'Dispatched' ? '#b3e5fc' : order.status === 'Pending' ? '#fff9c4' : '#ffcdd2'
-                                        }}>
-                                            {order.status}
-                                        </span>
-                                    </td>
-                                    <td style={{ padding: '12px', border: '1px solid #cfd8dc' }}>{new Date(order.createdAt).toLocaleString()}</td>
-                                </tr>
-                            ))
+                            historyOrders.map((order) => {
+                                const priorityData = getPriorityBadge(order.priority || 'MEDIUM');
+                                return (
+                                    <tr key={order._id} style={{ backgroundColor: '#ffffff' }}>
+                                        <td style={{ padding: '12px', border: '1px solid #cfd8dc' }}>{order._id.slice(-6).toUpperCase()}</td>
+                                        <td style={{ padding: '12px', border: '1px solid #cfd8dc' }}>{order.customerName}</td>
+                                        <td style={{ padding: '12px', border: '1px solid #cfd8dc' }}>
+                                            <span style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                padding: '6px 10px',
+                                                borderRadius: '999px',
+                                                fontWeight: 'bold',
+                                                color: priorityData.textColor,
+                                                backgroundColor: priorityData.bgColor
+                                            }}>
+                                                {priorityData.icon} {order.priority || 'MEDIUM'}
+                                            </span>
+                                        </td>
+                                        <td style={{ padding: '12px', border: '1px solid #cfd8dc' }}>
+                                            {order.itemsRequested && order.itemsRequested.map((item, index) => (
+                                                <div key={index} style={{ marginBottom: '4px' }}>
+                                                    • {item.itemName} x {item.qty}
+                                                </div>
+                                            ))}
+                                        </td>
+                                        <td style={{ padding: '12px', border: '1px solid #cfd8dc' }}>
+                                            <span style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                padding: '6px 10px',
+                                                borderRadius: '999px',
+                                                fontWeight: 'bold',
+                                                color: '#263238',
+                                                backgroundColor: order.status === 'Approved' ? '#dcedc8' : order.status === 'Dispatched' ? '#b3e5fc' : order.status === 'Pending' ? '#fff9c4' : '#ffcdd2'
+                                            }}>
+                                                {order.status}
+                                            </span>
+                                        </td>
+                                        <td style={{ padding: '12px', border: '1px solid #cfd8dc' }}>{new Date(order.createdAt).toLocaleString()}</td>
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>
