@@ -278,8 +278,7 @@ export default function StoreKeeperInventoryPage() {
 
   return (
     <DashboardLayout
-      title="Inventory dashboard"
-      subtitle="Live equipment stock, filters, and quick visual breakdowns for the warehouse floor."
+      title="Inventory Dashboard"
     >
       {loading ? <LinearProgress sx={{ mb: 2, borderRadius: 1 }} /> : <Box sx={{ height: 4, mb: 2 }} />}
 

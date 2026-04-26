@@ -32,6 +32,7 @@ export default function AddEquipment({ open, onClose, onSuccess }) {
   useEffect(() => {
     if (!open) return
     let cancelled = false
+    //Get aisle details for drop down
     axios
       .get('http://localhost:5001/api/aisles')
       .then((res) => {
@@ -73,7 +74,8 @@ export default function AddEquipment({ open, onClose, onSuccess }) {
       onClose()
     }
   }
-
+  
+// validations
   const validate = () => {
     const next = {}
     if (!name.trim()) next.name = 'Name is required'

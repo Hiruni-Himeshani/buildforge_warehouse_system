@@ -75,6 +75,7 @@ export default function EditEquipment({ open, equipment, onClose, onSuccess }) {
     if (!loading) onClose()
   }
 
+  //validations
   const validate = () => {
     const next = {}
     if (!name.trim()) next.name = 'Name is required'

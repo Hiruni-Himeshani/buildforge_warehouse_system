@@ -78,6 +78,7 @@ export default function EquipmentList({ reloadKey, onEdit, onRefresh, onRequestA
     ;(async () => {
       setLoading(true)
       try {
+        // Get all equipment api for table
         const res = await axios.get('http://localhost:5001/api/equipment')
         if (!cancelled) setRows(res.data.equipment || [])
       } catch (error) {
@@ -108,7 +109,7 @@ export default function EquipmentList({ reloadKey, onEdit, onRefresh, onRequestA
       setDamageTarget(null)
       setDamageAmount('1')
       onRefresh?.()
-      toast.success('Damaged stock moved to Trash; rack quantity updated.')
+      toast.success('Damaged stock moved to Trash, rack quantity updated.')
     } catch (error) {
       console.error(error)
       const msg = error.response?.data?.message || 'Could not update damaged stock.'
@@ -172,6 +173,7 @@ export default function EquipmentList({ reloadKey, onEdit, onRefresh, onRequestA
     ? `${displayRows.length} of ${rows.length} line${rows.length === 1 ? '' : 's'}`
     : `${rows.length} line${rows.length === 1 ? '' : 's'}`
 
+  // for search query clear button
   const clearTextSearch = () => setSearchQuery('')
   const clearAllFilters = () => {
     setSearchQuery('')
@@ -189,6 +191,7 @@ export default function EquipmentList({ reloadKey, onEdit, onRefresh, onRequestA
           flexWrap="wrap"
         >
           <TextField
+          //search items
             size="small"
             label="Search"
             placeholder="Name, item ID, category, quantity…"

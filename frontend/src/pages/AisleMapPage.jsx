@@ -64,6 +64,7 @@ export default function AisleMapPage() {
     load()
   }, [load])
 
+  //validations
   const submitAdd = async () => {
     const max = Number(addForm.maxSpace)
     if (!addForm.code.trim()) {
