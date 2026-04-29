@@ -343,6 +343,7 @@ router.get("/stock-movements", async (req, res) => {
 });
 
 // ========== 🪄 BACKORDER & DECISION LOOP (MAGIC LINK) ==========
+// 1. TRIGGER MAGIC LINK EMAIL TO CUSTOMER (Smart Split Logic)
 router.put("/orders/:id/backorder", async (req, res) => {
     try {
         const order = await Order.findById(req.params.id).populate('customerId');
@@ -355,28 +356,58 @@ router.put("/orders/:id/backorder", async (req, res) => {
         if (!customerEmail) {
             order.status = "Backordered";
             await order.save();
-            return res.json({ message: "No email found. Order sent directly to Backordered status." });
+            return res.json({ message: "No email found. Sent directly to Backordered." });
         }
 
-        const acceptLink = `http://localhost:5001/api/manager/orders/${order._id}/decision?choice=accept`;
+        // 🧠 THE UPGRADE: Calculate exactly what is missing!
+        const inventory = await Equipment.find({ status: "Available" });
+        let availableItemsHtml = "";
+        let missingItemsHtml = "";
+        let hasAvailableItems = false;
+
+        order.itemsRequested.forEach(reqItem => {
+            const invItem = inventory.find(inv => inv.name === reqItem.itemName);
+            const availableQty = invItem ? Math.max(0, invItem.quantity - (invItem.reservedQty || 0)) : 0;
+
+            if (availableQty >= reqItem.qty) {
+                availableItemsHtml += `<li style="color: #27ae60;">✅ <strong>${reqItem.qty}x ${reqItem.itemName}</strong> (In Stock & Ready)</li>`;
+                hasAvailableItems = true;
+            } else {
+                missingItemsHtml += `<li style="color: #e74c3c;">❌ <strong>${reqItem.qty}x ${reqItem.itemName}</strong> (Out of Stock - 15 Days Mfg. Time)</li>`;
+            }
+        });
+
+        // The Action Links
+        const acceptAllLink = `http://localhost:5001/api/manager/orders/${order._id}/decision?choice=acceptAll`;
+        const splitLink = `http://localhost:5001/api/manager/orders/${order._id}/decision?choice=split`;
+        const dropMissingLink = `http://localhost:5001/api/manager/orders/${order._id}/decision?choice=dropMissing`;
         const cancelLink = `http://localhost:5001/api/manager/orders/${order._id}/decision?choice=cancel`;
 
-        const mailOptions = {
-            to: customerEmail,
-            subject: 'BuildForge: Important Update Regarding Your Order',
-            html: `
-                <div style="font-family: Arial, sans-serif; padding: 20px; color: #2c3e50;">
-                    <h2 style="color: #f39c12;">Hello ${order.customerName},</h2>
-                    <p>Unfortunately, we do not have enough stock in our warehouse to fulfill your equipment order immediately.</p>
-                    <p>It will take approximately <strong>15 extra days</strong> for our factory to manufacture the items.</p>
-                    <p>Please click one of the buttons below to tell us how you would like to proceed:</p>
-                    <br><br>
-                    <a href="${acceptLink}" style="padding: 12px 25px; background-color: #27ae60; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">✅ I Will Wait</a>
-                    &nbsp;&nbsp;&nbsp;&nbsp;
-                    <a href="${cancelLink}" style="padding: 12px 25px; background-color: #e74c3c; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">❌ Cancel Order</a>
-                </div>
-            `
-        };
+        // Dynamic Buttons based on stock
+        let buttonsHtml = "";
+        if (hasAvailableItems) {
+            buttonsHtml = `
+                <p><strong>Option 1: Split Order</strong> <br><span style="font-size: 0.9em; color: #555;">(Send available items immediately, manufacture the rest and send later)</span><br>
+                <a href="${splitLink}" style="padding: 8px 15px; display: inline-block; margin-top: 5px; background: #3498db; color: white; text-decoration: none; border-radius: 4px;">✂️ Split My Order</a></p>
+
+                <p><strong>Option 2: Drop Missing Items</strong> <br><span style="font-size: 0.9em; color: #555;">(Send available items immediately, permanently cancel the out-of-stock items)</span><br>
+                <a href="${dropMissingLink}" style="padding: 8px 15px; display: inline-block; margin-top: 5px; background: #f39c12; color: white; text-decoration: none; border-radius: 4px;">🗑️ Drop Missing Items</a></p>
+                
+                <p><strong>Option 3: Wait for Everything</strong> <br><span style="font-size: 0.9em; color: #555;">(Hold the stock, manufacture missing items, send everything together)</span><br>
+                <a href="${acceptAllLink}" style="padding: 8px 15px; display: inline-block; margin-top: 5px; background: #27ae60; color: white; text-decoration: none; border-radius: 4px;">⏳ Wait for All</a></p>
+
+                <p><strong>Option 4: Cancel Entire Order</strong><br>
+                <a href="${cancelLink}" style="padding: 8px 15px; display: inline-block; margin-top: 5px; background: #e74c3c; color: white; text-decoration: none; border-radius: 4px;">❌ Cancel Order</a></p>
+            `;
+        } else {
+            buttonsHtml = `
+                <p><strong>Option 1: Wait for Manufacturing</strong><br>
+                <a href="${acceptAllLink}" style="padding: 8px 15px; display: inline-block; margin-top: 5px; background: #27ae60; color: white; text-decoration: none; border-radius: 4px;">⏳ I Will Wait</a></p>
+
+                <p><strong>Option 2: Cancel Order</strong><br>
+                <a href="${cancelLink}" style="padding: 8px 15px; display: inline-block; margin-top: 5px; background: #e74c3c; color: white; text-decoration: none; border-radius: 4px;">❌ Cancel Order</a></p>
+            `;
+        }
 
         const nodemailer = require('nodemailer');
         const transporter = nodemailer.createTransport({
@@ -384,28 +415,111 @@ router.put("/orders/:id/backorder", async (req, res) => {
             auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
         });
 
-        await transporter.sendMail({ from: process.env.EMAIL_USER, ...mailOptions });
-        res.json({ message: "Decision email sent to customer!" });
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: customerEmail,
+            subject: `BuildForge: Action Required for Order #${order._id.toString().slice(-6).toUpperCase()}`,
+            html: `
+                <div style="font-family: Arial; padding: 20px; border: 1px solid #eee; border-radius: 8px; max-width: 600px;">
+                    <h2 style="color: #2c3e50;">Hello ${order.customerName},</h2>
+                    <p style="color: #34495e;">We are preparing your order. Here is your current stock status:</p>
+                    <ul style="list-style-type: none; padding-left: 0;">
+                        ${availableItemsHtml}
+                        ${missingItemsHtml}
+                    </ul>
+                    <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="color: #34495e; font-weight: bold;">How would you like us to proceed?</p>
+                    ${buttonsHtml}
+                </div>
+            `
+        });
+        res.json({ message: "Smart decision email sent to customer!" });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
-
+// 2. MAGIC LINK LISTENER (Smart Order Splitter)
 router.get('/orders/:id/decision', async (req, res) => {
     try {
         const { choice } = req.query; 
         const order = await Order.findById(req.params.id);
 
-        if (!order) return res.send("<h1 style='text-align: center; margin-top: 50px;'>Order not found.</h1>");
+        if (!order) {
+            return res.send("<h1 style='font-family: Arial; text-align: center; margin-top: 50px;'>Order not found or already processed.</h1>");
+        }
 
-        if (choice === 'accept') {
+        // --- OPTION 1 & 2: Simple Wait or Cancel ---
+        if (choice === 'acceptAll') {
             order.status = 'Customer Accepted Delay';
             await order.save();
-            return res.send(`<div style='text-align: center; margin-top: 50px; color: #27ae60; font-family: Arial;'><h1>✅ Thank you!</h1><h2>We will notify the factory to begin production immediately.</h2></div>`);
-        } else if (choice === 'cancel') {
+            return res.send(`<div style='text-align: center; margin-top: 50px; color: #27ae60; font-family: Arial;'><h1>✅ Thank you!</h1><h2>We will manufacture all items and send them together.</h2></div>`);
+        } 
+        else if (choice === 'cancel') {
             order.status = 'Customer Cancelled';
             await order.save();
             return res.send(`<div style='text-align: center; margin-top: 50px; color: #e74c3c; font-family: Arial;'><h1>❌ Cancellation Requested</h1><h2>Your request has been forwarded to our Sales Manager.</h2></div>`);
         }
-    } catch (err) { res.status(500).send("Error processing request."); }
+
+        // --- THE MAGIC: RECALCULATE INVENTORY FOR SPLIT/DROP ---
+        const inventory = await Equipment.find({ status: "Available" });
+        let availableItems = [];
+        let missingItems = [];
+
+        order.itemsRequested.forEach(reqItem => {
+            const invItem = inventory.find(inv => inv.name === reqItem.itemName);
+            const availableQty = invItem ? Math.max(0, invItem.quantity - (invItem.reservedQty || 0)) : 0;
+
+            if (availableQty >= reqItem.qty) {
+                availableItems.push(reqItem);
+            } else {
+                missingItems.push(reqItem);
+            }
+        });
+
+        // --- OPTION 3: Drop Missing Items ---
+        if (choice === 'dropMissing') {
+            order.itemsRequested = availableItems; 
+            order.status = 'Pending'; // Send back to pending for immediate approval
+            order.customerName = `${order.customerName} (Dropped Missing Items)`;
+            await order.save();
+            return res.send(`<div style='text-align: center; margin-top: 50px; color: #f39c12; font-family: Arial;'><h1>✅ Order Updated!</h1><h2>We have removed the out-of-stock items. The rest will be dispatched shortly.</h2></div>`);
+        }
+
+        // --- OPTION 4: The Enterprise "Split Order" ---
+        if (choice === 'split') {
+            // Create Child Order A (The Available Items)
+            const orderA = new Order({
+                customerId: order.customerId,
+                customerName: `${order.customerName} (Part 1 - Ready)`,
+                priority: order.priority,
+                itemsRequested: availableItems,
+                status: 'Pending' // Goes to Manager to easily click "Approve"
+            });
+
+            // Create Child Order B (The Missing Items)
+            const orderB = new Order({
+                customerId: order.customerId,
+                customerName: `${order.customerName} (Part 2 - Backordered)`,
+                priority: order.priority,
+                itemsRequested: missingItems,
+                status: 'Backordered' // Skips the manager, goes straight to Factory Queue!
+            });
+
+            await orderA.save();
+            await orderB.save();
+
+            // Archive the original parent order so it disappears from the main queue
+            order.status = 'Cancelled';
+            order.cancellationCategory = 'System Auto-Split';
+            order.cancellationReason = 'Order was split into Part 1 (Available) and Part 2 (Backordered) by customer.';
+            order.cancelledAt = new Date();
+            await order.save();
+
+            return res.send(`<div style='text-align: center; margin-top: 50px; color: #3498db; font-family: Arial;'><h1>✂️ Order Successfully Split!</h1><h2>We are preparing your available items now. The rest have been sent to the factory!</h2></div>`);
+        }
+
+    } catch (err) { 
+        console.error(err);
+        res.status(500).send("<h1 style='text-align: center; color: red;'>Error processing request.</h1>"); 
+    }
 });
 
 router.put("/orders/:id/confirm-factory", async (req, res) => {
