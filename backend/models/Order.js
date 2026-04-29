@@ -14,7 +14,23 @@ const orderSchema = new mongoose.Schema({
     qty: Number,
     pickedQty: { type: Number, default: 0 }
   }],
-  status: { type: String, enum: ['Pending', 'Approved', 'Rejected', 'Dispatched', 'Picking', 'Ready for Gate Pass', 'Backordered', 'Cancelled'], default: 'Pending' },    
+  status: { 
+  type: String, 
+  enum: [
+    'Pending', 
+    'Approved', 
+    'Rejected', 
+    'Dispatched', 
+    'Picking', 
+    'Ready for Gate Pass', 
+    'Waiting on Customer',     // NEW: Email sent, waiting for reply
+    'Customer Accepted Delay', // NEW: Customer clicked "Keep Order"
+    'Customer Cancelled',      // NEW: Customer clicked "Cancel"
+    'Backordered',             // The final state (Sent to factory)
+    'Cancelled'
+  ], 
+  default: 'Pending' 
+},
   driverName: String,
   cancellationCategory: String,
   cancellationReason: String,
