@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify'; 
 
+
 function SalesManagerDashboard() {
     const [orders, setOrders] = useState([]);
     const [inventory, setInventory] = useState([]);
@@ -153,6 +154,7 @@ function SalesManagerDashboard() {
             </div>
             
             <hr style={{ marginBottom: '30px', border: '0', borderTop: '1px solid #cfd8dc' }} />
+           
 
             <div style={{ display: 'flex', gap: '20px', marginBottom: '40px', flexWrap: 'wrap' }}>
                 <div style={{ flex: '1', minWidth: '200px', backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', borderLeft: '6px solid #4CAF50' }}>

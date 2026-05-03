@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 // 🧩 Import Components
 import Sidebar from './components/Sidebar';
@@ -98,6 +99,7 @@ function Layout() {
 
           {/* All users want routes */}
           <Route path="/order-history" element={<OrderHistory />} />
+          <Route path="/manager/analytics" element={<AnalyticsPage />}/>
 
           {/* Catch-all route */}
           <Route path="*" element={<Navigate to={

@@ -566,4 +566,160 @@ router.put("/settings", (req, res) => {
   res.json({ message: "Settings saved!", settings: systemSettings });
 });
 
+// ==========================================
+// 📊 BI DASHBOARD: STATISTICS & LEADERBOARDS
+// ==========================================
+router.get("/reports/dashboard-stats", async (req, res) => {
+    try {
+        // 1. Basic KPIs (Key Performance Indicators)
+        // Count all orders in the database
+        const totalOrders = await Order.countDocuments();
+        
+        // Count only the orders waiting for the manager
+        const pendingApprovals = await Order.countDocuments({ status: 'Pending' });
+
+        // 2. Fetch completed orders to calculate the real winners
+        const completedOrders = await Order.find({ 
+            status: { $in: ['Dispatched', 'Completed'] } 
+        });
+
+        let clientStats = {};
+        let itemStats = {};
+
+        // 3. Loop through orders and tally up the numbers
+        completedOrders.forEach(order => {
+            // Tally Top Clients
+            if (!clientStats[order.customerName]) {
+                clientStats[order.customerName] = 0;
+            }
+            clientStats[order.customerName] += 1;
+
+            // Tally Top Items
+            order.itemsRequested.forEach(item => {
+                if (!itemStats[item.itemName]) {
+                    itemStats[item.itemName] = 0;
+                }
+                itemStats[item.itemName] += item.qty;
+            });
+        });
+
+        // 4. Find the absolute #1 Client for the top cards
+        let topClientName = "No Data Yet";
+        let maxOrders = 0;
+        for (const [name, count] of Object.entries(clientStats)) {
+            if (count > maxOrders) { 
+                topClientName = name; 
+                maxOrders = count; 
+            }
+        }
+
+        // Find the absolute #1 Item for the top cards
+        let topItemName = "No Data Yet";
+        let maxQty = 0;
+        for (const [name, qty] of Object.entries(itemStats)) {
+            if (qty > maxQty) { 
+                topItemName = name; 
+                maxQty = qty; 
+            }
+        }
+
+        // 5. Sort the lists for the Leaderboard Tables (Top 5 only)
+        const topClientsList = Object.entries(clientStats)
+            .map(([name, orders]) => ({ name, orders }))
+            .sort((a, b) => b.orders - a.orders)
+            .slice(0, 5);
+
+        const topItemsList = Object.entries(itemStats)
+            .map(([name, qty]) => ({ name, qty }))
+            .sort((a, b) => b.qty - a.qty)
+            .slice(0, 5);
+
+        // 6. Send all this beautiful data to React
+        res.json({
+            kpis: {
+                totalOrders,
+                pendingApprovals,
+                topClient: topClientName,
+                topItem: topItemName
+            },
+            leaderboards: {
+                clients: topClientsList,
+                items: topItemsList
+            }
+        });
+    } catch (err) {
+        console.error("Dashboard Stats Error:", err);
+        res.status(500).json({ error: "Failed to fetch dashboard stats" });
+    }
+
+    
+});
+
+// ==========================================
+// 🤖 AI DEMAND FORECASTING (GEMINI AI)
+// ==========================================
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+router.get("/reports/forecast/ai", async (req, res) => {
+    try {
+        // 1. Verify the API Key exists
+        if (!process.env.GEMINI_API_KEY) {
+            console.error("Missing GEMINI_API_KEY in .env file");
+            return res.status(500).json({ error: "AI Key missing" });
+        }
+
+        // 2. Initialize Google Gemini AI
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+        // 3. Fetch completed orders to see what has been selling
+        const completedOrders = await Order.find({ 
+            status: { $in: ['Dispatched', 'Completed'] } 
+        });
+
+        // 4. Tally up the sales data to send to the AI
+        let itemStats = {};
+        completedOrders.forEach(order => {
+            order.itemsRequested.forEach(item => {
+                if (!itemStats[item.itemName]) itemStats[item.itemName] = 0;
+                itemStats[item.itemName] += item.qty;
+            });
+        });
+
+        // 5. If there is no data, send an empty array back to React
+        if (Object.keys(itemStats).length === 0) {
+            return res.json([]);
+        }
+
+        // 6. Write the Prompt for the AI
+        const prompt = `
+        You are an expert Business Intelligence AI for a warehouse.
+        Here is the exact sales data for our equipment over the past 30 days:
+        ${JSON.stringify(itemStats)}
+
+        Based on this past sales data, predict the demand for each item for the NEXT 30 days.
+        You MUST respond ONLY with a valid JSON array. Do NOT include markdown formatting like \`\`\`json.
+        The JSON format must look exactly like this:
+        [
+          { "name": "Scaffolding Set", "pastSales": 17, "predictedDemand": 25 },
+          { "name": "Wheelbarrow", "pastSales": 2, "predictedDemand": 5 }
+        ]
+        `;
+
+        // 7. Ask Gemini for the prediction!
+        const result = await model.generateContent(prompt);
+        const responseText = result.response.text();
+        
+        // 8. Clean up the response in case the AI adds extra text
+        const cleanedText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+        // 9. Send the AI prediction to your beautiful Recharts graph!
+        const forecastData = JSON.parse(cleanedText);
+        res.json(forecastData);
+
+    } catch (err) {
+        console.error("AI Forecast Error:", err);
+        res.status(500).json({ error: "Failed to generate AI forecast" });
+    }
+});
+
 module.exports = router;

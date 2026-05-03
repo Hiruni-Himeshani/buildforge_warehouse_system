@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FaClipboardList, FaUsers, FaWarehouse, FaBoxOpen, FaTachometerAlt, FaCogs, FaHistory, FaMap, FaSignOutAlt } from 'react-icons/fa';
-
+import { FaClipboardList, FaUsers, FaWarehouse, FaBoxOpen, FaTachometerAlt, FaCogs, FaHistory, FaMap, FaSignOutAlt, FaChartLine } from 'react-icons/fa';
 function Sidebar() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -24,6 +23,7 @@ function Sidebar() {
     if (role === 'SalesManager') {
         menuItems.push({ name: 'Dashboard', path: '/approval-lobby', icon: <FaTachometerAlt /> });
         menuItems.push({ name: 'Settings', path: '/settings', icon: <FaCogs /> });
+        menuItems.push({ name: 'AI Analytics', path: '/manager/analytics', icon: <FaChartLine /> });
     } 
     
     if (role === 'SalesOfficer') {
