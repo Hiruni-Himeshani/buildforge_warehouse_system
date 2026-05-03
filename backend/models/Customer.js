@@ -3,7 +3,6 @@ const mongoose = require("mongoose");
 const customerSchema = new mongoose.Schema(
   {
     fullName: { type: String, required: true },
-    shopName: { type: String, required: true },
     contactNumber: { type: String, required: true },
     email: {
       type: String,
@@ -14,7 +13,9 @@ const customerSchema = new mongoose.Schema(
         "Please provide a valid email address",
       ],
     },
-    address: { type: String, required: true },
+    province: { type: String, required: true },
+    district: { type: String, required: true },
+    deliveryLocation: { type: String, required: true },
     status: {
       type: String,
       enum: ["Pending", "Active", "Inactive"],

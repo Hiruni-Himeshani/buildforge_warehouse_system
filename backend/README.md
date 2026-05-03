@@ -100,7 +100,7 @@ The system is designed to manage outbound warehouse operations efficiently, incl
 This release includes a full Sales Officer workflow for customer registration, order creation, and history review.
 
 ### Customer Management
-- Add new customers with required fields: **Full Name**, **Shop Name**, **Contact Number**, **Address**  
+- Add new customers with required fields: **Full Name**, ****, **Contact Number**, **Address**  
 - View all registered customers in a dedicated officer page  
 - Edit customer details with status control (**Active / Pending / Inactive**)  
 - Delete customer records directly from the officer UI  

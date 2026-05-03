@@ -60,7 +60,7 @@ const templates = {
   // Customer Registration Email
   customerRegistration: {
     subject: "Welcome to Buildforge Warehouse System",
-    getBody: (fullName, shopName, email) => `
+    getBody: (fullName, email) => `
       <!DOCTYPE html>
       <html>
       <head>
@@ -94,7 +94,6 @@ const templates = {
             <div class="info-box">
               <strong>Registration Details:</strong><br>
               Name: ${fullName}<br>
-              Shop Name: ${shopName}<br>
               Email: ${email}
             </div>
             

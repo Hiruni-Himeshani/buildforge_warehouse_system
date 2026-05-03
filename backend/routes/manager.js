@@ -134,23 +134,26 @@ router.get("/customers", async (req, res) => {
 router.post("/customers", async (req, res) => {
   try {
     console.log("[manager] POST /customers called with payload:", req.body);
-    const { fullName, shopName, contactNumber, address, email, status } =
+    const { fullName, contactNumber, province, district, deliveryLocation, email, status } =
       req.body;
     if (!fullName || !fullName.trim())
       return res.status(400).json({ error: "Full Name is required" });
-    if (!shopName || !shopName.trim())
-      return res.status(400).json({ error: "Shop Name is required" });
     if (!contactNumber || !contactNumber.trim())
       return res.status(400).json({ error: "Contact Number is required" });
-    if (!address || !address.trim())
-      return res.status(400).json({ error: "Address is required" });
+    if (!province || !province.trim())
+      return res.status(400).json({ error: "Province is required" });
+    if (!district || !district.trim())
+      return res.status(400).json({ error: "District is required" });
+    if (!deliveryLocation || !deliveryLocation.trim())
+      return res.status(400).json({ error: "Delivery Location is required" });
 
     const customer = new Customer({
       fullName: fullName.trim(),
-      shopName: shopName.trim(),
       contactNumber: contactNumber.trim(),
+      province: province.trim(),
+      district: district.trim(),
+      deliveryLocation: deliveryLocation.trim(),
       email: email ? email.trim() : undefined,
-      address: address.trim(),
       status:
         status && ["Pending", "Active", "Inactive"].includes(status)
           ? status
@@ -164,7 +167,6 @@ router.post("/customers", async (req, res) => {
       sendCustomerRegistrationEmail(
         email.trim(),
         fullName.trim(),
-        shopName.trim(),
       ).catch((err) =>
         console.warn("⚠️ Customer registration email failed:", err.message),
       );
@@ -185,18 +187,19 @@ router.put("/customers/:id", async (req, res) => {
       "[manager] PUT /customers/" + req.params.id + " called with payload:",
       req.body,
     );
-    const { fullName, shopName, contactNumber, address, email, status } =
+    const { fullName, contactNumber, province, district, deliveryLocation, email, status } =
       req.body;
     const customer = await Customer.findById(req.params.id);
     if (!customer) return res.status(404).json({ error: "Customer not found" });
 
     customer.fullName = fullName ? fullName.trim() : customer.fullName;
-    customer.shopName = shopName ? shopName.trim() : customer.shopName;
     customer.contactNumber = contactNumber
       ? contactNumber.trim()
       : customer.contactNumber;
+    customer.province = province ? province.trim() : customer.province;
+    customer.district = district ? district.trim() : customer.district;
+    customer.deliveryLocation = deliveryLocation ? deliveryLocation.trim() : customer.deliveryLocation;
     customer.email = email ? email.trim() : customer.email;
-    customer.address = address ? address.trim() : customer.address;
     if (status && ["Pending", "Active", "Inactive"].includes(status))
       customer.status = status;
 

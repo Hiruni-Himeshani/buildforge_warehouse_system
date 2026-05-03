@@ -47,13 +47,12 @@ const sendEmail = async (to, subject, html) => {
  * Called when a new customer is registered (Admin/Sales Officer adds customer)
  * @param {string} email - Customer's email
  * @param {string} fullName - Customer's full name
- * @param {string} shopName - Customer's shop name
  * @returns {Promise}
  */
-const sendCustomerRegistrationEmail = async (email, fullName, shopName) => {
+const sendCustomerRegistrationEmail = async (email, fullName) => {
   const template = templates.customerRegistration;
   const subject = template.subject;
-  const html = template.getBody(fullName, shopName, email);
+  const html = template.getBody(fullName, email);
 
   return sendEmail(email, subject, html);
 };
